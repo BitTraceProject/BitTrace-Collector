@@ -1,0 +1,93 @@
+version: '3'
+volumes:
+  collector_mysql:
+networks:
+  collector_mysql_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+services:
+  collector_mysql_master:
+    image: mysql:${MYSQL_VERSION}
+    container_name: collector_mysql_master
+    hostname: collector.mysql.master
+    labels:
+      service: collector_mysql_master_service
+    environment:
+      # 设置用户和密码
+      - "MYSQL_ROOT_PASSWORD=admin"
+      - "MYSQL_USER=admin"
+      - "MYSQL_PASS=admin"
+      # 设置默认数据库
+      - "MYSQL_DATABASE=bittrace" # 初始化启动时要创建的数据库的名称
+      # 设置时区
+      - "TZ=Asia/Shanghai"
+    # 设置utf8字符集
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    env_file:
+      - $PWD/$MYSQL_MASTER_BASEDIR/env/my.env
+    restart: on-failure
+    volumes:
+      # 文件挂载
+      - $PWD/$MYSQL_MASTER_BASEDIR/mydir:/mydir
+      # 挂载目录
+      - $PWD/$MYSQL_MASTER_BASEDIR/data:/var/lib/mysql
+      # 挂载 my.cnf 配置文件
+      - $PWD/$MYSQL_MASTER_BASEDIR/config/my.cnf:/etc/mysql/my.cnf
+      # 初始化 sql
+      - $PWD/$MYSQL_MASTER_BASEDIR/init:/docker-entrypoint-initdb.d/
+      - $PWD/$MYSQL_MASTER_BASEDIR/files:/var/lib/mysql-files
+    ports:
+      - '33061:3306'
+    networks:
+      collector_mysql_network:
+        ipv4_address: 172.21.0.10
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 100000
+        hard: 200000
+
+  collector_mysql_slave:
+    image: mysql:${MYSQL_VERSION}
+    container_name: collector_mysql_slave
+    hostname: collector.mysql.slave
+    labels:
+      service: collector_mysql_slave_service
+    environment:
+      # 设置用户和密码
+      - "MYSQL_ROOT_PASSWORD=admin"
+      - "MYSQL_USER=admin"
+      - "MYSQL_PASS=admin"
+      # 设置默认数据库
+      - "MYSQL_DATABASE=bittrace" # 初始化启动时要创建的数据库的名称
+      # 设置时区
+      - "TZ=Asia/Shanghai"
+    # 设置utf8字符集
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    env_file:
+      - $PWD/$MYSQL_SLAVE_BASEDIR/env/my.env
+    restart: on-failure
+    volumes:
+      # 文件挂载
+      - $PWD/$MYSQL_SLAVE_BASEDIR/mydir:/mydir
+      # 挂载目录
+      - $PWD/$MYSQL_SLAVE_BASEDIR/data:/var/lib/mysql
+      # 挂载 my.cnf 配置文件
+      - $PWD/$MYSQL_SLAVE_BASEDIR/config/my.cnf:/etc/mysql/my.cnf
+      # 初始化 sql
+      - $PWD/$MYSQL_SLAVE_BASEDIR/init:/docker-entrypoint-initdb.d/
+      - $PWD/$MYSQL_SLAVE_BASEDIR/files:/var/lib/mysql-files
+    ports:
+      - '33062:3306'
+    networks:
+      collector_mysql_network:
+        ipv4_address: 172.21.0.20
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 100000
+        hard: 200000
+
